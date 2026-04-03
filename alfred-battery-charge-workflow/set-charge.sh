@@ -2,7 +2,10 @@
 
 set -euo pipefail
 
-BATTERY_CMD="/usr/local/co.palokaj.battery/battery"
+SCRIPT_DIR="${0:A:h}"
+source "$SCRIPT_DIR/battery-common.sh"
+
+BATTERY_CMD="$(resolve_battery_cmd 2>/dev/null || true)"
 raw_target="${1:-}"
 target="${raw_target:l}"
 target="${target//%/}"
@@ -23,30 +26,6 @@ notify() {
   ) &
 }
 
-detect_state() {
-  local status_text
-  status_text="$("$BATTERY_CMD" status 2>&1 || true)"
-  log "status output: $status_text"
-
-  if [[ "$status_text" == *"being maintained at"* ]]; then
-    local limit
-    limit="$(printf '%s' "$status_text" | /usr/bin/sed -n 's/.*being maintained at \([0-9][0-9]*\)%.*/\1/p' | /usr/bin/head -n 1)"
-    if [[ -n "$limit" ]]; then
-      printf 'Limiter on (%s%%)' "$limit"
-    else
-      printf 'Limiter on'
-    fi
-    return 0
-  fi
-
-  if [[ "$status_text" == *"smc charging enabled"* ]]; then
-    printf 'Limiter off'
-    return 0
-  fi
-
-  printf 'State unclear'
-}
-
 run_and_notify() {
   local mode="$1"
 
@@ -63,7 +42,7 @@ run_and_notify() {
 
 if [[ ! -x "$BATTERY_CMD" ]]; then
   log "battery cli missing"
-  notify "Battery CLI is missing. Open battery.app and install its background components first."
+  notify "Battery CLI is missing."
   exit 1
 fi
 

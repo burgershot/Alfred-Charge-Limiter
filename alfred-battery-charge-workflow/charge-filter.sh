@@ -2,15 +2,19 @@
 
 set -u
 
-BATTERY_CMD="/usr/local/co.palokaj.battery/battery"
+SCRIPT_DIR="${0:A:h}"
+source "$SCRIPT_DIR/battery-common.sh"
+
+BATTERY_CMD="$(resolve_battery_cmd 2>/dev/null || true)"
 query="${1:-}"
 query="${query//[^0-9]/}"
 limits=(70 80 90 100)
 
 if [[ ! -x "$BATTERY_CMD" ]]; then
-  cat <<'EOF'
-{"items":[{"title":"Battery CLI not found","subtitle":"Expected /usr/local/co.palokaj.battery/battery. Open battery.app once and install its background components first.","valid":false}]}
-EOF
+  missing_subtitle="$(format_missing_battery_subtitle)"
+  cat <<JSON
+{"items":[{"title":"Battery CLI not found","subtitle":"$missing_subtitle","valid":false}]}
+JSON
   exit 0
 fi
 
@@ -45,9 +49,9 @@ for limit in "${limits[@]}"; do
 done
 
 if [[ "${#selected[@]}" -eq 0 ]]; then
-  cat <<EOF
+  cat <<JSON
 {"items":[{"title":"Use charge 70, 80, 90, or 100","subtitle":"$limiter_label. $status_suffix","valid":false}]}
-EOF
+JSON
   exit 0
 fi
 

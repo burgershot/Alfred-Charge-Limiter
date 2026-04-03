@@ -1,4 +1,4 @@
-# Battery Charge Control for Alfred
+# Alfred Charge Limiter
 
 An Alfred workflow for controlling the macOS battery charge limiter from a single `charge` keyword.
 
@@ -9,9 +9,14 @@ It currently offers quick actions for:
 - `90%`
 - `100%`
 
-The workflow is built around the [`battery`](https://github.com/actuallymentor/battery) command-line tool and expects the executable to exist at:
+The workflow is built around the [`battery`](https://github.com/actuallymentor/battery) command-line tool.
+It now tries a few common install locations so it is more useful outside one specific machine:
 
-`/usr/local/co.palokaj.battery/battery`
+- `BATTERY_CMD` if you set it manually
+- `/usr/local/co.palokaj.battery/battery`
+- `/opt/homebrew/bin/battery`
+- `/usr/local/bin/battery`
+- `battery` from your shell `PATH`
 
 ## Disclaimer
 
@@ -34,10 +39,11 @@ You should assume:
 
 ## What Is In This Repo
 
-- `Battery Charge Control V4.alfredworkflow`: importable Alfred workflow package
+- `Alfred Charge Limiter.alfredworkflow`: importable Alfred workflow package
 - `alfred-battery-charge-workflow/info.plist`: Alfred workflow definition
 - `alfred-battery-charge-workflow/charge-filter.sh`: Alfred Script Filter suggestions
 - `alfred-battery-charge-workflow/set-charge.sh`: action runner that calls the battery CLI
+- `alfred-battery-charge-workflow/battery-common.sh`: shared battery CLI discovery helpers
 
 ## Usage
 
@@ -52,6 +58,7 @@ You should assume:
 - `70%`, `80%`, and `90%` start the matching maintenance target.
 - The workflow currently uses standard macOS notifications for feedback.
 - The workflow icon is bundled with the package.
+- If the workflow cannot find the `battery` CLI, Alfred shows a setup hint instead of silently failing.
 
 ## License
 
