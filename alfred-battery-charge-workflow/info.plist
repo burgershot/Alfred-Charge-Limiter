@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>bundleid</key>
+  <string>com.nikvostrov.batterycharge.v4</string>
+  <key>category</key>
+  <string>Tools</string>
+  <key>connections</key>
+  <dict>
+    <key>31B27330-CB90-4E79-823D-F1EAD6A89B3F</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>8D32A209-B02C-4B55-90B7-E8A0A70BA5A9</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+  </dict>
+  <key>createdby</key>
+  <string>Codex</string>
+  <key>description</key>
+  <string>Control the Battery charging limiter from Alfred.</string>
+  <key>disabled</key>
+  <false/>
+  <key>name</key>
+  <string>Battery Charge Control V4</string>
+  <key>objects</key>
+  <array>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <true/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <false/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>charge</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string>Checking battery status...</string>
+        <key>script</key>
+        <string>./charge-filter.sh "${1}"</string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>charge-filter.sh</string>
+        <key>skipuniversalaction</key>
+        <true/>
+        <key>subtext</key>
+        <string>Choose 70, 80, 90, or 100</string>
+        <key>title</key>
+        <string>Charge Limit</string>
+        <key>type</key>
+        <integer>11</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>31B27330-CB90-4E79-823D-F1EAD6A89B3F</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>concurrently</key>
+        <true/>
+        <key>escaping</key>
+        <integer>68</integer>
+        <key>script</key>
+        <string>#!/bin/zsh
+cd "$PWD"
+exec "./set-charge.sh" "$1"</string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string></string>
+        <key>type</key>
+        <integer>11</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.action.script</string>
+      <key>uid</key>
+      <string>8D32A209-B02C-4B55-90B7-E8A0A70BA5A9</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+  </array>
+  <key>readme</key>
+  <string>Use `charge` and choose 70, 80, 90, or 100.</string>
+  <key>uidata</key>
+  <dict>
+    <key>31B27330-CB90-4E79-823D-F1EAD6A89B3F</key>
+    <dict>
+      <key>colorindex</key>
+      <integer>2</integer>
+      <key>xpos</key>
+      <integer>120</integer>
+      <key>ypos</key>
+      <integer>90</integer>
+    </dict>
+    <key>8D32A209-B02C-4B55-90B7-E8A0A70BA5A9</key>
+    <dict>
+      <key>colorindex</key>
+      <integer>5</integer>
+      <key>xpos</key>
+      <integer>410</integer>
+      <key>ypos</key>
+      <integer>90</integer>
+    </dict>
+  </dict>
+  <key>userconfigurationconfig</key>
+  <array/>
+  <key>webaddress</key>
+  <string></string>
+</dict>
+</plist>
