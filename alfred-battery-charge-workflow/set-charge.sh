@@ -36,7 +36,7 @@ run_and_notify() {
   else
     log "command: maintain $mode"
     /usr/bin/nohup "$BATTERY_CMD" maintain "$mode" >> "$LOG_FILE" 2>&1 &
-    notify "Limiter on (${mode}%)"
+    notify "Limiter on ${mode}%"
   fi
 }
 

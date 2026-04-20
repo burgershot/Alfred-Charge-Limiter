@@ -35,7 +35,7 @@ trimmed_limit="${maintain_percentage// /}"
 status_suffix="Current battery ${percentage:-?}%"
 
 if [[ "$status_text" == *"being maintained at"* ]] || { [[ -n "$trimmed_limit" ]] && [[ "${charging// /}" == "disabled" ]]; }; then
-  limiter_label="Limiter on (${trimmed_limit:-?}%)"
+  limiter_label="Limiter on ${trimmed_limit:-?}%"
   status_suffix="${status_suffix}, limiter ${trimmed_limit:-?}%"
 else
   status_suffix="${status_suffix}, full charge mode"
