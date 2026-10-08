@@ -1,87 +1,99 @@
 #!/bin/zsh
+#
+# Apply a battery charge limit (or turn the limiter off).
+# Called by the Alfred action with a single argument: 70, 80, 90, 100,
+# or one of off/disable/full/stop.
+#
+# Reliability model:
+#   * `battery maintain N` sets the target, writes the launchd plist, and
+#     starts a maintenance loop. We run it in the FOREGROUND (no fragile
+#     `nohup ... &`) so the setup fully completes before this script exits.
+#   * We then hand the live loop to the launchd agent and kill the duplicate
+#     loop `maintain` spawned, so exactly one loop runs and it keeps working
+#     across reboots without the Battery menu-bar app.
 
-set -euo pipefail
+set -u
 
 SCRIPT_DIR="${0:A:h}"
 source "$SCRIPT_DIR/battery-common.sh"
 
 BATTERY_CMD="$(resolve_battery_cmd 2>/dev/null || true)"
-raw_target="${1:-}"
-target="${raw_target:l}"
-target="${target//%/}"
-digits="${target//[^0-9]/}"
 LOG_FILE="/tmp/battery-charge-alfred.log"
+CONFIG_DIR="$HOME/.battery"
 
-timestamp() {
-  /bin/date '+%Y-%m-%d %H:%M:%S'
-}
-
-log() {
-  printf '%s %s\n' "$(timestamp)" "$1" >> "$LOG_FILE"
-}
-
+timestamp() { /bin/date '+%Y-%m-%d %H:%M:%S'; }
+log() { printf '%s %s\n' "$(timestamp)" "$1" >> "$LOG_FILE"; }
 notify() {
-  (
-    /usr/bin/osascript -e "display notification \"$1\" with title \"Battery Charge\"" >/dev/null 2>&1 || true
-  ) &
+  /usr/bin/osascript -e "display notification \"${1//\"/\\\"}\" with title \"Battery Charge\"" >/dev/null 2>&1 || true
 }
+fail() { log "ERROR: $1"; notify "$1"; exit 1; }
 
-run_and_notify() {
-  local mode="$1"
+raw="${1:-}"
+target="${raw:l}"          # lowercase
+target="${target//%/}"     # strip a trailing %
+digits="${target//[^0-9]/}"
 
-  if [[ "$mode" == "100" ]]; then
-    log "command: maintain stop"
-    "$BATTERY_CMD" maintain stop >> "$LOG_FILE" 2>&1
-    notify "Limiter off"
-  else
-    log "command: maintain $mode"
-    /usr/bin/nohup "$BATTERY_CMD" maintain "$mode" >> "$LOG_FILE" 2>&1 &
-    notify "Limiter on ${mode}%"
-  fi
-}
+log "invoked with: '$raw' (normalized='$target', digits='$digits')"
 
-if [[ ! -x "$BATTERY_CMD" ]]; then
-  log "battery cli missing"
-  notify "Battery CLI is missing."
-  exit 1
+if [[ -z "$BATTERY_CMD" || ! -x "$BATTERY_CMD" ]]; then
+  fail "Battery CLI not found. Install it first."
 fi
 
-log "raw target: $raw_target"
-log "normalized target: $target"
-log "digits: $digits"
-
+# Decide whether this means "turn the limiter off" or "maintain at N%".
+disable=false
 case "$target" in
-  100|*100*|off|disable|disabled|full)
-    run_and_notify 100
-    ;;
-  70|*70*)
-    run_and_notify 70
-    ;;
-  80|*80*)
-    run_and_notify 80
-    ;;
-  90|*90*)
-    run_and_notify 90
+  off|disable|disabled|full|stop|100)
+    disable=true
     ;;
   *)
-    case "$digits" in
-      70)
-        run_and_notify 70
-        ;;
-      80)
-        run_and_notify 80
-        ;;
-      90)
-        run_and_notify 90
-        ;;
-      100)
-        run_and_notify 100
-        ;;
-      *)
-        log "unrecognized argument"
-        notify "Use charge 70, 80, 90, or 100."
-        exit 1
-        ;;
-    esac
+    if [[ -z "$digits" ]]; then
+      fail "Use charge 70, 80, 90, or 100."
+    fi
+    if (( digits < 1 || digits > 100 )); then
+      fail "Pick a value between 1 and 100."
+    fi
+    (( digits == 100 )) && disable=true
     ;;
 esac
+
+if $disable; then
+  log "disabling limiter (full charge)"
+  "$BATTERY_CMD" maintain stop >> "$LOG_FILE" 2>&1 || true
+  stop_battery_agent
+  # Clear the saved target so a login `recover` doesn't re-enable the limiter.
+  rm -f "$CONFIG_DIR/maintain.percentage" "$CONFIG_DIR/maintain.voltage" 2>/dev/null
+  notify "Limiter off — allowing a full charge."
+  log "limiter disabled"
+  exit 0
+fi
+
+level="$digits"
+log "setting limiter to ${level}% (force_discharge=${BATTERY_FORCE_DISCHARGE})"
+
+# Saves the target and writes the launchd plist. We pass no flag here so this
+# transient loop only disables charging (no stray discharge child); the agent
+# below is what actually force-discharges down to the target.
+if ! "$BATTERY_CMD" maintain "$level" >> "$LOG_FILE" 2>&1; then
+  fail "Failed to set limiter to ${level}%. See $LOG_FILE."
+fi
+
+# Make the launchd agent the single maintenance loop: regenerate the plist
+# (adding --force-discharge), reload it, then drop the transient loop the CLI
+# just started. The agent persists across reboots with no app running.
+detached_pid="$(cat "$CONFIG_DIR/battery.pid" 2>/dev/null || true)"
+write_battery_agent_plist "$BATTERY_CMD"
+if reload_battery_agent; then
+  log "launchd agent active; removing transient loop ${detached_pid:-none}"
+  if [[ -n "$detached_pid" ]]; then
+    kill "$detached_pid" 2>/dev/null || true
+  fi
+else
+  log "launchd agent unavailable; keeping the foreground maintenance loop"
+fi
+
+if [[ "${BATTERY_FORCE_DISCHARGE}" == "true" ]]; then
+  notify "Limiter on — discharging to ${level}%."
+else
+  notify "Limiter on — holding at ${level}%."
+fi
+log "limiter set to ${level}%"

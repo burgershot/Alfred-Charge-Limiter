@@ -1,65 +1,59 @@
-# Alfred Charge Limiter
+# Battery Charge Alfred Workflow
 
-An Alfred workflow for controlling the macOS battery charge limiter from a single `charge` keyword.
+Control the macOS battery charge limiter from Alfred.
 
-It currently offers quick actions for:
+Type the keyword `charge`, then pick an action:
 
-- `70%`
-- `80%`
-- `90%`
-- `100%`
+- `charge 70` – hold the battery at 70%
+- `charge 80` – hold the battery at 80%
+- `charge 90` – hold the battery at 90%
+- `charge 100` – turn the limiter off and allow a full charge
 
-The workflow is built around the [`battery`](https://github.com/actuallymentor/battery) command-line tool.
-It now tries a few common install locations so it is more useful outside one specific machine:
+The filter subtitle always shows the current level and limiter state, e.g.
+`Now 100% · Limiter on 80%`.
 
-- `BATTERY_CMD` if you set it manually
-- `/usr/local/co.palokaj.battery/battery`
-- `/opt/homebrew/bin/battery`
-- `/usr/local/bin/battery`
-- `battery` from your shell `PATH`
+## How it works
 
-## Disclaimer
+The workflow drives the [`battery`](https://github.com/actuallymentor/battery) CLI
+(installed at `/usr/local/co.palokaj.battery/battery`, with a symlink at
+`/usr/local/bin/battery`).
 
-This project is **fully vibe-coded**.
+For reliability it enforces the limit through a **single launchd user agent**
+(`com.battery.app`, `~/Library/LaunchAgents/battery.plist`) instead of a loose
+background process:
 
-That means:
+- `set-charge.sh` sets the target with `battery maintain N`, then hands the live
+  maintenance loop to the launchd agent and kills the duplicate loop the CLI
+  spawns. Result: exactly one loop, managed by launchd, that survives reboots.
+- Turning the limiter off (`charge 100`) stops the loop, unloads the agent, and
+  clears the saved target so it does not re-enable itself after a reboot.
 
-- the workflow logic, packaging, and repo structure were produced with heavy AI assistance
-- the code was iterated experimentally until it worked in the target environment
-- it has **not** been developed with the same rigor as a production-grade, widely-tested open source utility
-- it may contain rough edges, portability issues, fragile Alfred-specific assumptions, or implementation mistakes
+### Active discharge
 
-If you use, fork, or publish this project, please do so with that context in mind.
+By default the limiter **actively discharges** down to the target even while
+plugged in (via the CLI's `--force-discharge`), so going from 100% to 80%
+actually drains rather than waiting for a slow natural drop. The launchd agent
+carries this flag too, so the behavior persists across reboots.
 
-You should assume:
+Caveat: `--force-discharge` does not play well with clamshell mode (lid closed,
+driving an external display). To disable active discharge and only stop charging
+above the target, export `BATTERY_FORCE_DISCHARGE=false` in the Alfred action's
+environment (Alfred → workflow → the Run Script action).
 
-- the code is useful, but not polished
-- the implementation is environment-specific
-- further manual review is recommended before trusting changes blindly
+### No menu-bar app required
 
-## What Is In This Repo
+You do **not** need the Battery menu-bar app running. In fact, keeping it open
+causes a second maintenance loop that fights the workflow's loop over the SMC —
+the main source of the old unreliability. Quit the Battery app and let this
+workflow + the launchd agent manage charging on their own. The limit resumes
+automatically at login via the agent.
 
-- `Alfred Charge Limiter.alfredworkflow`: importable Alfred workflow package
-- `alfred-battery-charge-workflow/info.plist`: Alfred workflow definition
-- `alfred-battery-charge-workflow/charge-filter.sh`: Alfred Script Filter suggestions
-- `alfred-battery-charge-workflow/set-charge.sh`: action runner that calls the battery CLI
-- `alfred-battery-charge-workflow/battery-common.sh`: shared battery CLI discovery helpers
+## Files
 
-## Usage
+- `charge-filter.sh` – Alfred Script Filter: lists choices and current status.
+- `set-charge.sh` – applies the chosen limit (or turns it off).
+- `battery-common.sh` – shared helpers (locate the CLI, manage the launchd agent).
+- `info.plist` – the Alfred workflow definition.
 
-1. Install and configure the `battery` tool separately.
-2. Import `Alfred Charge Limiter.alfredworkflow` into Alfred.
-3. Type `charge` in Alfred.
-4. Pick one of the suggested targets: `70`, `80`, `90`, or `100`.
-
-## Notes
-
-- `100%` disables the limiter and allows a full charge.
-- `70%`, `80%`, and `90%` start the matching maintenance target.
-- The workflow currently uses standard macOS notifications for feedback.
-- The workflow icon is bundled with the package.
-- If the workflow cannot find the `battery` CLI, Alfred shows a setup hint instead of silently failing.
-
-## License
-
-No license has been added yet. By default, that means all rights are reserved until the author chooses a license explicitly.
+Actions are logged to `/tmp/battery-charge-alfred.log`; the CLI logs to
+`~/.battery/battery.log`.
