@@ -102,19 +102,37 @@ PLIST
 
 # (Re)start the launchd agent so it becomes the single maintenance loop.
 # Boots the agent out first so a freshly written plist is reloaded (launchctl
-# caches the definition at bootstrap time). RunAtLoad starts the loop.
-# Idempotent. Returns 0 if the agent is running afterwards.
+# caches the definition at bootstrap time). Both bootout and bootstrap are
+# asynchronous, so we wait for bootout to finish and poll for the service to
+# come up. Idempotent. Returns 0 if the agent is running afterwards.
 reload_battery_agent() {
-  local domain
+  local domain svc i
   domain="$(battery_gui_domain)"
+  svc="$domain/$BATTERY_AGENT_LABEL"
 
   [[ -f "$BATTERY_AGENT_PLIST" ]] || return 1
 
-  /bin/launchctl bootout "$domain/$BATTERY_AGENT_LABEL" 2>/dev/null
-  /bin/launchctl enable "$domain/$BATTERY_AGENT_LABEL" 2>/dev/null
-  /bin/launchctl bootstrap "$domain" "$BATTERY_AGENT_PLIST" 2>/dev/null
+  # If already loaded, boot it out and wait until it is really gone — otherwise
+  # the following bootstrap races the (async) bootout and silently fails.
+  if /bin/launchctl print "$svc" >/dev/null 2>&1; then
+    /bin/launchctl bootout "$svc" 2>/dev/null
+    for i in {1..30}; do
+      /bin/launchctl print "$svc" >/dev/null 2>&1 || break
+      /bin/sleep 0.1
+    done
+  fi
 
-  /bin/launchctl print "$domain/$BATTERY_AGENT_LABEL" >/dev/null 2>&1
+  /bin/launchctl enable "$svc" 2>/dev/null
+  /bin/launchctl bootstrap "$domain" "$BATTERY_AGENT_PLIST" 2>/dev/null
+  # bootstrap with RunAtLoad starts it; kickstart is a belt-and-suspenders retry.
+  /bin/launchctl kickstart "$svc" 2>/dev/null
+
+  # Wait for the service to register before reporting success.
+  for i in {1..30}; do
+    /bin/launchctl print "$svc" >/dev/null 2>&1 && return 0
+    /bin/sleep 0.1
+  done
+  return 1
 }
 
 # Stop and unload the launchd agent, and keep it from auto-loading at next

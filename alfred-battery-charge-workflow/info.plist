@@ -19,6 +19,19 @@
 				<false/>
 			</dict>
 		</array>
+		<key>8D32A209-B02C-4B55-90B7-E8A0A70BA5A9</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>C0FFEE00-BA11-4A77-9E00-000000000001</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
 	</dict>
 	<key>createdby</key>
 	<string>Codex</string>
@@ -106,6 +119,27 @@ exec "./set-charge.sh" "$1"</string>
 			<key>version</key>
 			<integer>2</integer>
 		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<true/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>Battery Charge</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>C0FFEE00-BA11-4A77-9E00-000000000001</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
 	</array>
 	<key>readme</key>
 	<string>Use `charge` and choose 70, 80, 90, or 100.</string>
@@ -126,6 +160,15 @@ exec "./set-charge.sh" "$1"</string>
 			<integer>5</integer>
 			<key>xpos</key>
 			<integer>410</integer>
+			<key>ypos</key>
+			<integer>90</integer>
+		</dict>
+		<key>C0FFEE00-BA11-4A77-9E00-000000000001</key>
+		<dict>
+			<key>colorindex</key>
+			<integer>5</integer>
+			<key>xpos</key>
+			<integer>700</integer>
 			<key>ypos</key>
 			<integer>90</integer>
 		</dict>

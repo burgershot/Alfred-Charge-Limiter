@@ -10,7 +10,8 @@ Type the keyword `charge`, then pick an action:
 - `charge 100` – turn the limiter off and allow a full charge
 
 The filter subtitle always shows the current level and limiter state, e.g.
-`Now 100% · Limiter on 80%`.
+`Now 100% · Limiter on 80%`. After you choose an action, a native Alfred
+notification (with the workflow's battery icon) confirms the result.
 
 ## How it works
 

@@ -23,10 +23,12 @@ CONFIG_DIR="$HOME/.battery"
 
 timestamp() { /bin/date '+%Y-%m-%d %H:%M:%S'; }
 log() { printf '%s %s\n' "$(timestamp)" "$1" >> "$LOG_FILE"; }
-notify() {
-  /usr/bin/osascript -e "display notification \"${1//\"/\\\"}\" with title \"Battery Charge\"" >/dev/null 2>&1 || true
-}
-fail() { log "ERROR: $1"; notify "$1"; exit 1; }
+# The message is printed to stdout so the connected Alfred "Post Notification"
+# output shows it with the workflow's battery icon. Diagnostics stay in the log.
+# Exactly one notify() runs per invocation, so stdout holds a single message.
+notify() { printf '%s' "$1"; }
+# Exit 0 even on user-facing errors so Alfred still posts the notification.
+fail() { log "ERROR: $1"; notify "$1"; exit 0; }
 
 raw="${1:-}"
 target="${raw:l}"          # lowercase
