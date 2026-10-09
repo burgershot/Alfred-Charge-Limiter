@@ -66,6 +66,11 @@ battery_gui_domain() {
 # afterwards to keep our settings. Runs `maintain_synchronous recover`, which
 # re-reads the saved target at login; the optional flag makes it discharge
 # down to that target rather than idling at a higher charge.
+#
+# KeepAlive with SuccessfulExit=false restarts the loop if it is killed (e.g.
+# during sleep) so it re-enforces the limit on wake — and, with force-discharge,
+# drains back down automatically. It is NOT restarted on a clean exit 0 (recover
+# with no saved target), which avoids a tight respawn loop when the limiter is off.
 write_battery_agent_plist() {
   local battery_cmd="$1"
   local logfile="$HOME/.battery/battery.log"
@@ -95,6 +100,11 @@ ${force_line}		</array>
 		<string>${logfile}</string>
 		<key>RunAtLoad</key>
 		<true/>
+		<key>KeepAlive</key>
+		<dict>
+			<key>SuccessfulExit</key>
+			<false/>
+		</dict>
 	</dict>
 </plist>
 PLIST
