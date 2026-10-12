@@ -60,42 +60,43 @@ esac
 
 if $disable; then
   log "disabling limiter (full charge)"
-  "$BATTERY_CMD" maintain stop >> "$LOG_FILE" 2>&1 || true
-  stop_battery_agent
-  # Clear the saved target so a login `recover` doesn't re-enable the limiter.
+  # Clear the saved target first so the maintainer, if it wakes during teardown,
+  # sees "off" and releases the adapter instead of re-asserting discharge.
   rm -f "$CONFIG_DIR/maintain.percentage" "$CONFIG_DIR/maintain.voltage" 2>/dev/null
+  stop_battery_agent
+  "$BATTERY_CMD" maintain stop >> "$LOG_FILE" 2>&1 || true
+  # Release any forced discharge (CHIE -> 00) so the battery can charge again.
+  "$BATTERY_CMD" adapter on >> "$LOG_FILE" 2>&1 || true
   notify "Limiter off — allowing a full charge."
   log "limiter disabled"
   exit 0
 fi
 
 level="$digits"
-log "setting limiter to ${level}% (force_discharge=${BATTERY_FORCE_DISCHARGE})"
+log "setting limiter to ${level}%"
 
-# Saves the target and writes the launchd plist. We pass no flag here so this
-# transient loop only disables charging (no stray discharge child); the agent
-# below is what actually force-discharges down to the target.
-if ! "$BATTERY_CMD" maintain "$level" >> "$LOG_FILE" 2>&1; then
-  fail "Failed to set limiter to ${level}%. See $LOG_FILE."
+# Stop any loop the CLI may have left running (its maintain loop cannot hold the
+# limit on this hardware — see charge-maintain.sh — so we don't use it).
+"$BATTERY_CMD" maintain stop >> "$LOG_FILE" 2>&1 || true
+if [[ -n "$(cat "$CONFIG_DIR/battery.pid" 2>/dev/null)" ]]; then
+  kill "$(cat "$CONFIG_DIR/battery.pid" 2>/dev/null)" 2>/dev/null || true
 fi
 
-# Make the launchd agent the single maintenance loop: regenerate the plist
-# (adding --force-discharge), reload it, then drop the transient loop the CLI
-# just started. The agent persists across reboots with no app running.
-detached_pid="$(cat "$CONFIG_DIR/battery.pid" 2>/dev/null || true)"
-write_battery_agent_plist "$BATTERY_CMD"
+# Persist the target where our maintainer reads it, and install the maintainer
+# to a stable location so the launchd agent never points into the Alfred
+# workflow folder (whose path changes if the workflow is reinstalled).
+mkdir -p "$CONFIG_DIR"
+print -r -- "$level" > "$CONFIG_DIR/maintain.percentage"
+/usr/bin/install -m 0755 "$SCRIPT_DIR/charge-maintain.sh" "$BATTERY_MAINTAIN_SCRIPT"
+
+# (Re)start the launchd agent running our adapter-based maintainer.
+write_battery_agent_plist
 if reload_battery_agent; then
-  log "launchd agent active; removing transient loop ${detached_pid:-none}"
-  if [[ -n "$detached_pid" ]]; then
-    kill "$detached_pid" 2>/dev/null || true
-  fi
+  log "launchd maintainer active for ${level}%"
 else
-  log "launchd agent unavailable; keeping the foreground maintenance loop"
+  log "ERROR: launchd maintainer failed to start"
+  fail "Set ${level}%, but the background maintainer did not start. See $LOG_FILE."
 fi
 
-if [[ "${BATTERY_FORCE_DISCHARGE}" == "true" ]]; then
-  notify "Limiter on — discharging to ${level}%."
-else
-  notify "Limiter on — holding at ${level}%."
-fi
+notify "Limiter on — holding at ${level}%."
 log "limiter set to ${level}%"

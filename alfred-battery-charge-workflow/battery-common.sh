@@ -61,24 +61,24 @@ battery_gui_domain() {
   printf 'gui/%s' "$(/usr/bin/id -u)"
 }
 
-# Write the launchd agent plist. The CLI rewrites this file (without the
-# force-discharge flag) on every `battery maintain`, so we regenerate it here
-# afterwards to keep our settings. Runs `maintain_synchronous recover`, which
-# re-reads the saved target at login; the optional flag makes it discharge
-# down to that target rather than idling at a higher charge.
-#
-# KeepAlive with SuccessfulExit=false restarts the loop if it is killed (e.g.
-# during sleep) so it re-enforces the limit on wake — and, with force-discharge,
-# drains back down automatically. It is NOT restarted on a clean exit 0 (recover
-# with no saved target), which avoids a tight respawn loop when the limiter is off.
-write_battery_agent_plist() {
-  local battery_cmd="$1"
-  local logfile="$HOME/.battery/battery.log"
-  local force_line=""
+# Path to our adapter-based maintainer. It is copied to a STABLE location
+# (~/.battery) by set-charge.sh so the launchd agent never depends on the
+# Alfred workflow folder, whose path changes if the workflow is reinstalled.
+BATTERY_MAINTAIN_SCRIPT="$HOME/.battery/charge-maintain.sh"
 
-  if [[ "${BATTERY_FORCE_DISCHARGE}" == "true" ]]; then
-    force_line=$'\t\t\t<string>--force-discharge</string>\n'
-  fi
+# Write the launchd agent plist so it runs our maintainer (charge-maintain.sh)
+# rather than the CLI's `maintain_synchronous`, which cannot stop charging on
+# Macs without the CH0B/CHTE SMC keys. The maintainer re-reads the saved target
+# itself and holds the battery there using the adapter/discharge lever.
+#
+# RESUME_BELOW controls how far below the target it drains before topping back
+# up (the sawtooth depth). KeepAlive{SuccessfulExit=false} restarts the loop if
+# it is killed (e.g. on wake from sleep) so enforcement resumes automatically;
+# it is NOT restarted on a clean exit 0 (no saved target), avoiding a tight
+# respawn loop when the limiter is off.
+write_battery_agent_plist() {
+  local logfile="$HOME/.battery/battery.log"
+  local resume_below="${BATTERY_RESUME_BELOW:-5}"
 
   mkdir -p "${BATTERY_AGENT_PLIST:h}"
   cat > "$BATTERY_AGENT_PLIST" <<PLIST
@@ -90,10 +90,14 @@ write_battery_agent_plist() {
 		<string>com.battery.app</string>
 		<key>ProgramArguments</key>
 		<array>
-			<string>${battery_cmd}</string>
-			<string>maintain_synchronous</string>
-			<string>recover</string>
-${force_line}		</array>
+			<string>/bin/zsh</string>
+			<string>${BATTERY_MAINTAIN_SCRIPT}</string>
+		</array>
+		<key>EnvironmentVariables</key>
+		<dict>
+			<key>BATTERY_RESUME_BELOW</key>
+			<string>${resume_below}</string>
+		</dict>
 		<key>StandardOutPath</key>
 		<string>${logfile}</string>
 		<key>StandardErrorPath</key>
