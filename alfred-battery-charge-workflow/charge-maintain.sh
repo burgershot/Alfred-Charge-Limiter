@@ -84,6 +84,7 @@ while true; do
   fi
 
   low=$(( target - RESUME_BELOW ))
+  (( low < 1 )) && low=1          # never chase an impossible floor
   if (( pct >= target )); then
     start_discharge
   elif (( pct <= low )); then

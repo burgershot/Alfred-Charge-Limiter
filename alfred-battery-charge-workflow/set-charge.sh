@@ -4,13 +4,12 @@
 # Called by the Alfred action with a single argument: 70, 80, 90, 100,
 # or one of off/disable/full/stop.
 #
-# Reliability model:
-#   * `battery maintain N` sets the target, writes the launchd plist, and
-#     starts a maintenance loop. We run it in the FOREGROUND (no fragile
-#     `nohup ... &`) so the setup fully completes before this script exits.
-#   * We then hand the live loop to the launchd agent and kill the duplicate
-#     loop `maintain` spawned, so exactly one loop runs and it keeps working
-#     across reboots without the Battery menu-bar app.
+# Model: we don't use the CLI's maintain loop (it can't hold the limit on this
+# hardware — see charge-maintain.sh). We save the target, install our own
+# adapter-based maintainer to a stable path, and run it as a launchd agent that
+# survives reboots with no menu-bar app. The agent holds the battery between
+# (target - BATTERY_RESUME_BELOW)% and target% with a shallow discharge/charge
+# sawtooth; BATTERY_RESUME_BELOW is an Alfred workflow variable (default 5).
 
 set -u
 
@@ -73,7 +72,19 @@ if $disable; then
 fi
 
 level="$digits"
-log "setting limiter to ${level}%"
+
+# How far below the target the battery may drain before charging resumes (the
+# sawtooth depth). Alfred passes this as the BATTERY_RESUME_BELOW workflow
+# variable; keep digits only, default 5, and clamp so the low end stays >= 1%.
+resume="${BATTERY_RESUME_BELOW:-5}"
+resume="${resume//[^0-9]/}"
+[[ -z "$resume" ]] && resume=5
+(( resume < 1 )) && resume=1
+(( resume > level - 1 )) && resume=$(( level - 1 ))
+export BATTERY_RESUME_BELOW="$resume"
+low=$(( level - resume ))
+
+log "setting limiter to ${level}% (range ${low}-${level}%, resume_below=${resume})"
 
 # Stop any loop the CLI may have left running (its maintain loop cannot hold the
 # limit on this hardware — see charge-maintain.sh — so we don't use it).
@@ -98,5 +109,5 @@ else
   fail "Set ${level}%, but the background maintainer did not start. See $LOG_FILE."
 fi
 
-notify "Limiter on — holding at ${level}%."
-log "limiter set to ${level}%"
+notify "Limiter on — holding between ${low}% and ${level}%."
+log "limiter set to ${level}% (range ${low}-${level}%)"

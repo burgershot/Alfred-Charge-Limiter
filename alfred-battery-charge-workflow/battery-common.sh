@@ -46,17 +46,6 @@ format_missing_battery_subtitle() {
 BATTERY_AGENT_LABEL="com.battery.app"
 BATTERY_AGENT_PLIST="$HOME/Library/LaunchAgents/battery.plist"
 
-# When enabled, the maintenance loop actively discharges (even while plugged in)
-# down to the target instead of just waiting for a natural drain. Controlled by
-# the BATTERY_FORCE_DISCHARGE workflow variable (Alfred checkbox: 1/0); also
-# accepts true/false/yes/no/on/off. Defaults to enabled when unset. Normalized
-# here to exactly "true" or "false" so callers can compare simply.
-: "${BATTERY_FORCE_DISCHARGE:=true}"
-case "${BATTERY_FORCE_DISCHARGE:l}" in
-  false|0|no|off) BATTERY_FORCE_DISCHARGE=false ;;
-  *)              BATTERY_FORCE_DISCHARGE=true  ;;
-esac
-
 battery_gui_domain() {
   printf 'gui/%s' "$(/usr/bin/id -u)"
 }

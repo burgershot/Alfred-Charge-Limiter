@@ -179,26 +179,28 @@ exec "./set-charge.sh" "$1"</string>
 			<key>config</key>
 			<dict>
 				<key>default</key>
-				<integer>1</integer>
+				<string>5</string>
+				<key>placeholder</key>
+				<string>5</string>
 				<key>required</key>
 				<false/>
-				<key>text</key>
-				<string>Actively discharge down to the target (turn off for clamshell mode)</string>
+				<key>trim</key>
+				<true/>
 			</dict>
 			<key>description</key>
-			<string>When on, choosing a lower limit drains the battery even while plugged in. When off, charging is only stopped above the target and the battery drains naturally.</string>
+			<string>How far below the limit the battery is allowed to drain before it tops back up. The battery floats between (limit − this) and the limit. Larger = a wider range and fewer charge/discharge switches, and a slightly lower average charge (gentler on long-term battery health). Example: limit 80 with 20 here = floats between 60% and 80%.</string>
 			<key>label</key>
-			<string>Force discharge</string>
+			<string>Discharge range (% below limit)</string>
 			<key>type</key>
-			<string>checkbox</string>
+			<string>textfield</string>
 			<key>variable</key>
-			<string>BATTERY_FORCE_DISCHARGE</string>
+			<string>BATTERY_RESUME_BELOW</string>
 		</dict>
 	</array>
 	<key>variables</key>
 	<dict>
-		<key>BATTERY_FORCE_DISCHARGE</key>
-		<string>1</string>
+		<key>BATTERY_RESUME_BELOW</key>
+		<string>5</string>
 	</dict>
 	<key>webaddress</key>
 	<string></string>

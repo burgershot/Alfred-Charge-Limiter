@@ -38,12 +38,31 @@ and the battery quietly climbs to 100%.
 
 On that hardware the only working lever is the **power adapter** (`CHIE`): the
 Mac can be told to run off the battery (draining) or to accept the adapter
-(charging). `charge-maintain.sh` uses this to hold the battery around the target
-with a shallow hysteresis sawtooth: it discharges when at/above the target and
-charges again once the level drops `BATTERY_RESUME_BELOW` percent under it
-(default 5, so a target of 80 floats between ~75% and 80%). There is no true
-"hold" lever on this hardware, so some gentle cycling near the target is
-expected — and far healthier than sitting pinned at 100%.
+(charging). `charge-maintain.sh` uses this to hold the battery in a band with a
+hysteresis sawtooth: it discharges when at/above the target and charges again
+once the level drops below the bottom of the band. There is no true "hold" lever
+on this hardware, so some cycling is expected — and far healthier than sitting
+pinned at 100%.
+
+### Discharge range
+
+The **Discharge range (% below limit)** setting (Alfred → Configure Workflow)
+controls how far below the limit the battery may drain before it tops back up —
+the `BATTERY_RESUME_BELOW` variable, default 5. A limit of 80 with a range of 20
+floats the battery between **60% and 80%**.
+
+What's best for battery health:
+
+- **Average charge level is the main factor.** Li-ion ages faster the longer it
+  sits at a high charge. A wider range keeps the average lower (60–80 averages
+  ~70% vs ~77% for 75–80), which is gentler on long-term (calendar) aging.
+- **A wider range does *not* add cycle wear.** While plugged in and idle the
+  battery cycles the same total energy per day regardless of range width — a
+  wider range just means fewer, slightly deeper switches instead of many tiny
+  ones. It also means less adapter toggling.
+- **Net:** a moderate-to-wide range (e.g. 15–20, i.e. 60–80 for an 80 limit) is
+  a good choice. Keeping the device cool and not charging to 100% matter more
+  than the exact range.
 
 ### Keep the Mac awake on AC
 
